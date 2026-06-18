@@ -255,7 +255,9 @@ def evaluate_model(
         f"{model_name} Confusion Matrix"
     )
 
-    plt.show()
+    os.makedirs("outputs", exist_ok=True)
+    plt.savefig(f"outputs/{model_name}_confusion_matrix.png")
+    plt.close()
 
     return auc
 
@@ -355,7 +357,9 @@ def feature_importance(
         f"{model_name} Feature Importance"
     )
 
-    plt.show()
+    os.makedirs("outputs", exist_ok=True)
+    plt.savefig(f"outputs/{model_name}_feature_importance.png")
+    plt.close()
 
     return importance
 
