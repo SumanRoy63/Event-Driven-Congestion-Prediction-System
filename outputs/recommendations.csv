@@ -1,0 +1,5 @@
+severity,closure_probability,hotspot_rank,risk_score,alert_level,traffic_officers,barricades,diversion_plan,emergency_team,public_notification
+High,0.95,1,96.5,RED,15,Required,Activate Alternate Route,Dispatch Immediately,Send SMS + App Alert
+Medium,0.65,4,61.5,ORANGE,5,Partial,Monitor Traffic Flow,Standby,App Notification
+Low,0.2,8,20.0,YELLOW,2,Not Required,Monitor Traffic Flow,Standby,No Public Alert
+High,0.88,2,92.4,RED,15,Required,Activate Alternate Route,Dispatch Immediately,Send SMS + App Alert
