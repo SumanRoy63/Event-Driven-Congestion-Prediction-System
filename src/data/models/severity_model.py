@@ -454,10 +454,10 @@ def main():
         "Random Forest"
     )
 
-    save_model(
-        rf,
-        "severity_rf.pkl"
-    )
+    # save_model(
+    #     rf,
+    #     "severity_rf.pkl"
+    # )
 
     # ---------------------------------
     # XGBOOST
