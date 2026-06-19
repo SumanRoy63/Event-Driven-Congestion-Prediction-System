@@ -6,7 +6,13 @@ xgboost
 matplotlib
 seaborn
 <<<<<<< HEAD
+streamlit
+fastapi
+uvicorn
+=======
+<<<<<<< HEAD
 folium
 streamlits
 =======
 >>>>>>> e3f5263e19c3ffd27b5e179459413e60015977b0
+>>>>>>> 4e40a092388facbc0e0e7914b63eaf3d3c5db17c
