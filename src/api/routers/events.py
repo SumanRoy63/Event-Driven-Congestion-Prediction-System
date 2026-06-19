@@ -10,11 +10,11 @@ router = APIRouter()
 
 @router.post("/events", response_model=EventResponse)
 def create_event(payload: EventRequest):
-    # 1. Evaluate Hotspot Rank internally
-    hotspot_info = determine_hotspot_rank(payload.latitude, payload.longitude)
-    
-    # 2. Fetch appropriate models based on event date
+    # 1. Fetch appropriate models based on event date
     models = get_models_for_date(payload.start_datetime)
+
+    # 2. Evaluate Hotspot Rank internally using the versioned CSV
+    hotspot_info = determine_hotspot_rank(payload.latitude, payload.longitude, models.get("hotspots_df"))
     
     # 3. Build Features
     features_df = preprocess_event(payload.dict(), models["categorical_encoders"])

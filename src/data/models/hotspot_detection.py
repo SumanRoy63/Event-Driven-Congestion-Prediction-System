@@ -166,7 +166,11 @@ def visualize_clusters(
 
     plt.ylabel("Latitude")
 
-    plt.show()
+    # Instead of plt.show(), save the figure so it doesn't block server threads
+    os.makedirs("models", exist_ok=True)
+    filename = title.replace(' ', '_').lower() + ".png"
+    plt.savefig(f"models/{filename}", bbox_inches="tight")
+    plt.close()
 
 
 # ====================================================

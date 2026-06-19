@@ -1,6 +1,7 @@
 import json
 import os
 import joblib
+import pandas as pd
 from datetime import datetime
 from typing import Dict, Any
 
@@ -41,6 +42,7 @@ def get_models_for_date(target_datetime: datetime) -> Dict[str, Any]:
             if start_d <= target_date <= end_d:
                 selected_version = version
                 selected_path = meta.get("path", "")
+                selected_hotspots = meta.get("hotspots_path", "")
                 break
         except Exception as e:
             continue
@@ -64,11 +66,17 @@ def get_models_for_date(target_datetime: datetime) -> Dict[str, Any]:
         priority_encoder = joblib.load(os.path.join(base_path, "priority_encoder.pkl"))
         categorical_encoders = joblib.load(os.path.join(base_path, "encoders.pkl"))
         
+        # Load hotspots df if path provided
+        hotspots_df = None
+        if selected_hotspots and os.path.exists(selected_hotspots):
+            hotspots_df = pd.read_csv(selected_hotspots)
+        
         models = {
             "road_model": road_model,
             "severity_model": severity_model,
             "priority_encoder": priority_encoder,
-            "categorical_encoders": categorical_encoders
+            "categorical_encoders": categorical_encoders,
+            "hotspots_df": hotspots_df
         }
         
         # Cache it

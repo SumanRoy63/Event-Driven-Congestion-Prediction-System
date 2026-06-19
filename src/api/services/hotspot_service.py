@@ -1,17 +1,6 @@
-import pandas as pd
-import numpy as np
-import os
 import math
 from typing import Dict, Any
-
-HOTSPOTS_FILE = "outputs/hotspot_clusters.csv"
-hotspots_df = None
-
-try:
-    if os.path.exists(HOTSPOTS_FILE):
-        hotspots_df = pd.read_csv(HOTSPOTS_FILE)
-except Exception as e:
-    print(f"Warning: Could not load hotspots file. {e}")
+import pandas as pd
 
 def haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """Calculate distance in kilometers between two points on earth."""
@@ -27,10 +16,10 @@ def haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> fl
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     return R * c
 
-def determine_hotspot_rank(lat: float, lon: float) -> Dict[str, Any]:
+def determine_hotspot_rank(lat: float, lon: float, hotspots_df: pd.DataFrame = None) -> Dict[str, Any]:
     """
     Given a latitude and longitude, determines the hotspot rank by finding
-    the nearest cluster center.
+    the nearest cluster center from the versioned hotspots dataframe.
     """
     if hotspots_df is None or hotspots_df.empty or "latitude" not in hotspots_df.columns:
         # Fallback if no hotspot data available

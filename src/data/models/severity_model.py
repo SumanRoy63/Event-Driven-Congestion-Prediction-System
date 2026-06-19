@@ -274,7 +274,10 @@ def evaluate_model(
     )
 
     os.makedirs("outputs", exist_ok=True)
-    plt.savefig(f"outputs/{model_name}_confusion_matrix.png")
+    # Save alongside the models
+    os.makedirs("models", exist_ok=True)
+    plt.savefig(f"models/{model_name}_confusion_matrix.png", bbox_inches="tight")
+    plt.close()
     plt.close()
 
     return acc
@@ -378,7 +381,10 @@ def plot_feature_importance(
     )
 
     os.makedirs("outputs", exist_ok=True)
-    plt.savefig(f"outputs/{model_name}_feature_importance.png")
+    # Save alongside the models
+    os.makedirs("models", exist_ok=True)
+    plt.savefig(f"models/{model_name}_feature_importance.png", bbox_inches="tight")
+    plt.close()
     plt.close()
 
 
