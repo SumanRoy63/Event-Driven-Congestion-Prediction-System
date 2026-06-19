@@ -1,27 +1,10 @@
-import joblib
 import pandas as pd
 import numpy as np
-import os
 from typing import Dict, Any
+from datetime import datetime
+from src.api.services.model_manager import get_models_for_date
 
-# =====================================
-# MODEL LOADING (Run once on startup)
-# =====================================
-MODELS_DIR = "models"
-
-try:
-    road_model = joblib.load(os.path.join(MODELS_DIR, "road_closure_xgb.pkl"))
-    severity_model = joblib.load(os.path.join(MODELS_DIR, "severity_xgb.pkl"))
-    priority_encoder = joblib.load(os.path.join(MODELS_DIR, "priority_encoder.pkl"))
-    categorical_encoders = joblib.load(os.path.join(MODELS_DIR, "encoders.pkl"))
-    # Optionally load kmeans/dbscan for hotspots
-    kmeans_model = joblib.load(os.path.join(MODELS_DIR, "kmeans_model.pkl"))
-except Exception as e:
-    print(f"Warning: Models could not be loaded on startup. {e}")
-    road_model = severity_model = priority_encoder = categorical_encoders = kmeans_model = None
-
-
-def preprocess_event(payload_dict: Dict[str, Any]) -> pd.DataFrame:
+def preprocess_event(payload_dict: Dict[str, Any], categorical_encoders: Dict[str, Any]) -> pd.DataFrame:
     """
     Transforms the raw EventRequest dictionary into a feature DataFrame 
     ready for the XGBoost models.
@@ -43,51 +26,51 @@ def preprocess_event(payload_dict: Dict[str, Any]) -> pd.DataFrame:
             df = df.drop(columns=[col])
 
     # 2. Encode Categorical Variables
-    # The models/encoders.pkl holds a dict of trained LabelEncoders
     if categorical_encoders is not None:
         for col, encoder in categorical_encoders.items():
             if col in df.columns:
-                # Handle unseen labels gracefully by mapping them to a default or -1
-                # Standard LabelEncoder throws an error on unseen labels.
-                # A quick hack for unseen data is to convert unknown strings to the 0th class
-                # or safely bypass.
                 known_classes = set(encoder.classes_)
                 df[col] = df[col].apply(lambda x: x if str(x) in known_classes else str(encoder.classes_[0]))
                 df[col] = encoder.transform(df[col].astype(str))
 
-    # Keep only numeric columns, just like app.py
+    # Keep only numeric columns
     df = df.select_dtypes(include=np.number)
     
-    # Align feature columns to model expectations (using a robust approach)
-    # If the model expects specific columns in a specific order, it will complain if there's a mismatch.
-    # We rely on XGBoost's feature names if available.
-    try:
-        model_features = road_model.feature_names_in_
-        # Add missing columns with 0
-        for f in model_features:
-            if f not in df.columns:
-                df[f] = 0
-        # Reorder and subset exactly as model expects
-        df = df[model_features]
-    except AttributeError:
-        # If feature_names_in_ is not available, we just pass the DataFrame as is
-        # and hope the column order matches how it was trained (alphabetical or original CSV order).
-        pass
-
     return df
 
-def predict_event(features_df: pd.DataFrame) -> Dict[str, Any]:
+def predict_event(features_df: pd.DataFrame, models: Dict[str, Any]) -> Dict[str, Any]:
     """
     Runs the inference models to predict road closure probability and severity.
     """
-    if road_model is None or severity_model is None:
-        return {"road_closure_probability": 0.0, "severity": "Unknown (Models not loaded)"}
+    road_model = models.get("road_model")
+    severity_model = models.get("severity_model")
+    priority_encoder = models.get("priority_encoder")
 
     try:
-        road_prob = float(road_model.predict_proba(features_df)[0][1])
-        severity_idx = int(severity_model.predict(features_df)[0])
+        # Align features for road model
+        road_features = features_df.copy()
+        if hasattr(road_model, "feature_names_in_"):
+            for f in road_model.feature_names_in_:
+                if f not in road_features.columns:
+                    road_features[f] = 0
+            road_features = road_features[road_model.feature_names_in_]
+            
+        road_prob = float(road_model.predict_proba(road_features)[0][1])
         
-        # Inverse transform the severity index to actual string label (e.g. "High", "Low")
+        # Align features for severity model
+        severity_features = features_df.copy()
+        if "requires_road_closure" not in severity_features.columns:
+             severity_features["requires_road_closure"] = 1 if road_prob > 0.5 else 0
+             
+        if hasattr(severity_model, "feature_names_in_"):
+            for f in severity_model.feature_names_in_:
+                if f not in severity_features.columns:
+                    severity_features[f] = 0
+            severity_features = severity_features[severity_model.feature_names_in_]
+            
+        severity_idx = int(severity_model.predict(severity_features)[0])
+
+        # Inverse transform the severity index to actual string label
         severity = str(priority_encoder.inverse_transform([severity_idx])[0])
         
     except Exception as e:

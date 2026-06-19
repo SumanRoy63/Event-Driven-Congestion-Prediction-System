@@ -31,3 +31,9 @@ class EventRequest(BaseModel):
 
     class Config:
         extra = "allow"
+
+class RecommendationRequest(BaseModel):
+    severity: str = Field(..., description="Predicted severity level (e.g., High, Medium, Low)")
+    road_closure_probability: float = Field(..., description="Probability of road closure (0.0 to 1.0)")
+    hotspot_rank: int = Field(..., description="Rank of the hotspot (1 is highest priority)")
+

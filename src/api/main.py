@@ -1,5 +1,7 @@
-from fastapi import FastAPI
-from src.api.routers import events
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+from src.api.routers import events, predictions, hotspots, recommendations, ingest
+from src.api.services.model_manager import ModelOutOfBoundsException
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(
@@ -17,8 +19,23 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(events.router, prefix="/api/v1", tags=["Events"])
+app.include_router(events.router, prefix="/api/v1", tags=["Events (Combined Workflow)"])
+app.include_router(predictions.router, prefix="/api/v1", tags=["Predictions"])
+app.include_router(hotspots.router, prefix="/api/v1", tags=["Hotspots"])
+app.include_router(recommendations.router, prefix="/api/v1", tags=["Recommendations"])
+app.include_router(ingest.router, prefix="/api/v1", tags=["Data Ingestion & Training"])
 
 @app.get("/health")
 def health_check():
     return {"status": "healthy", "service": "Traffic Intelligence API"}
+
+@app.exception_handler(ModelOutOfBoundsException)
+async def model_out_of_bounds_handler(request: Request, exc: ModelOutOfBoundsException):
+    return JSONResponse(
+        status_code=404,
+        content={
+            "status": "error",
+            "code": "MODEL_OUT_OF_BOUNDS",
+            "message": exc.message
+        }
+    )
