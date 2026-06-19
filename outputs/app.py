@@ -164,70 +164,102 @@ elif page == "Analytics":
 
 elif page == "Prediction":
 
-    st.title(
-        "🤖 AI Prediction"
-    )
+    st.title("🤖 AI Prediction")
 
     st.info(
         "Enter feature values and predict road closure + severity"
     )
 
-    numeric_cols = df.select_dtypes(
-        include=np.number
-    ).columns.tolist()
+    # =====================================
+    # LOAD FEATURE COLUMNS
+    # =====================================
 
-    target_cols = [
-        "requires_road_closure",
-        "priority"
-    ]
+    try:
+        feature_columns = joblib.load(
+            "models/feature_columns.pkl"
+        )
+    except Exception:
+        st.error(
+            "feature_columns.pkl not found or invalid. "
+            "Save training columns first."
+        )
+        st.stop()
 
-    feature_cols = [
-        c for c in numeric_cols
-        if c not in target_cols
-    ]
+    if isinstance(feature_columns, dict):
+        road_features = feature_columns.get("road_closure", [])
+        severity_features = feature_columns.get("severity", [])
+    else:
+        road_features = list(feature_columns)
+        severity_features = list(feature_columns)
+
+    if not road_features or not severity_features:
+        st.error(
+            "feature_columns.pkl does not contain valid column lists."
+        )
+        st.stop()
+
+    input_features = sorted(
+        set(road_features) | set(severity_features)
+    )
+
+    if "requires_road_closure" in input_features:
+        input_features.remove("requires_road_closure")
+
+    # =====================================
+    # CREATE INPUT FORM
+    # =====================================
 
     input_data = {}
 
-    for col in feature_cols[:10]:
+    col1, col2 = st.columns(2)
 
-        input_data[col] = st.number_input(
+    for i, col in enumerate(input_features):
 
-            col,
+        if col in df.columns:
+            try:
+                default_value = float(df[col].median())
+            except Exception:
+                default_value = 0.0
+        else:
+            default_value = 0.0
 
-            value=float(
-                df[col].median()
+        target_col = col1 if i % 2 == 0 else col2
+        with target_col:
+            input_data[col] = st.number_input(
+                col,
+                value=default_value
             )
-        )
 
-    if st.button(
-        "Predict"
-    ):
+    # =====================================
+    # PREDICT
+    # =====================================
 
-        X = pd.DataFrame(
-            [input_data]
-        )
+    if st.button("Predict"):
 
         try:
+            X = pd.DataFrame([input_data])
 
-            road_prob = (
-                road_model
-                .predict_proba(X)[0][1]
-            )
+            road_input = X[road_features]
+            road_prob = road_model.predict_proba(road_input)[0][1]
+            road_pred = int(road_model.predict(road_input)[0])
 
-            severity_pred = (
-                severity_model
-                .predict(X)[0]
-            )
+            severity_input = X.copy()
+            severity_input["requires_road_closure"] = road_pred
+            severity_input = severity_input[severity_features]
 
-            severity = (
-                priority_encoder
-                .inverse_transform(
-                    [severity_pred]
-                )[0]
+            severity_pred = int(
+                severity_model.predict(severity_input)[0]
             )
+            severity = priority_encoder.inverse_transform(
+                [severity_pred]
+            )[0]
 
             st.success(
                 f"Road Closure Probability: {road_prob:.2%}"
+            )
+
+            st.success(
+                f"Road Closure Required: {road_pred}"
             )
 
             st.success(
@@ -235,8 +267,10 @@ elif page == "Prediction":
             )
 
         except Exception as e:
+            st.error(
+                f"Prediction Error: {e}"
+            )
 
-            st.error(str(e))
 
 # =====================================
 # HOTSPOTS
