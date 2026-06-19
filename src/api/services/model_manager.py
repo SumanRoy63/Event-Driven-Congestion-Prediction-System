@@ -2,15 +2,21 @@ import json
 import os
 import joblib
 import pandas as pd
+import threading
+import logging
 from datetime import datetime
 from typing import Dict, Any
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 MODELS_DIR = "models"
 REGISTRY_PATH = os.path.join(MODELS_DIR, "model_registry.json")
 
-# In-memory cache to store loaded models (LRU style concept)
-# Structure: {"v1_baseline": {"road_model": ..., "severity_model": ..., ...}}
+# In-memory Thread-Safe LRU Cache
+MAX_CACHE_SIZE = 3
 _model_cache: Dict[str, Dict[str, Any]] = {}
+_cache_lock = threading.Lock()
 
 class ModelOutOfBoundsException(Exception):
     def __init__(self, message: str):
@@ -34,6 +40,7 @@ def get_models_for_date(target_datetime: datetime) -> Dict[str, Any]:
     
     selected_version = None
     selected_path = ""
+    selected_hotspots = ""
     
     for version, meta in registry.get("versions", {}).items():
         try:
@@ -53,12 +60,17 @@ def get_models_for_date(target_datetime: datetime) -> Dict[str, Any]:
             f"No model is trained for events on {date_str}. Please upload a CSV for this date range via the /api/v1/ingest pipeline, or wait for the server to process new data."
         )
         
-    # If it's already in memory, return it
-    if selected_version in _model_cache:
-        return _model_cache[selected_version]
+    # Thread-Safe LRU Cache Hit Check
+    with _cache_lock:
+        if selected_version in _model_cache:
+            # Move to end of dict to mark as most recently used
+            models = _model_cache.pop(selected_version)
+            _model_cache[selected_version] = models
+            logger.info(f"[CACHE HIT] Loaded version '{selected_version}' from LRU memory.")
+            return models
         
-    # Load into memory
-    print(f"Loading model version: {selected_version} into memory...")
+    # Cache Miss - Load into memory from disk
+    logger.info(f"[CACHE MISS] Loading model version '{selected_version}' from disk...")
     try:
         base_path = os.path.join(MODELS_DIR, selected_path)
         road_model = joblib.load(os.path.join(base_path, "road_closure_xgb.pkl"))
@@ -79,8 +91,18 @@ def get_models_for_date(target_datetime: datetime) -> Dict[str, Any]:
             "hotspots_df": hotspots_df
         }
         
-        # Cache it
-        _model_cache[selected_version] = models
+        # Thread-Safe LRU Cache Write and Eviction
+        with _cache_lock:
+            # Evict the oldest model if we are at capacity
+            if len(_model_cache) >= MAX_CACHE_SIZE:
+                # Python 3.7+ dicts preserve insertion order. The first item is the oldest.
+                oldest_version = next(iter(_model_cache))
+                del _model_cache[oldest_version]
+                logger.info(f"[CACHE EVICT] Max capacity ({MAX_CACHE_SIZE}) reached. Evicted oldest version: '{oldest_version}'.")
+            
+            _model_cache[selected_version] = models
+            logger.info(f"[CACHE STORE] Version '{selected_version}' cached. Current cache size: {len(_model_cache)}/{MAX_CACHE_SIZE}.")
+            
         return models
     except Exception as e:
         raise ModelOutOfBoundsException(f"Found version '{selected_version}' in registry, but failed to load .pkl files. Error: {e}")

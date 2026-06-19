@@ -7,7 +7,7 @@ def load_dataset(path):
     """
 
     try:
-        df = pd.read_csv("Astram event data_anonymized - Astram event data_anonymizedb40ac87.csv")
+        df = pd.read_csv(path)
 
         print("=" * 50)
         print("Dataset Loaded Successfully")

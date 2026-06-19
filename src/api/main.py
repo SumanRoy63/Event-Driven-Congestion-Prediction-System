@@ -3,6 +3,12 @@ from fastapi.responses import JSONResponse
 from src.api.routers import events, predictions, hotspots, recommendations, ingest
 from src.api.services.model_manager import ModelOutOfBoundsException
 from fastapi.middleware.cors import CORSMiddleware
+from src.api.db.database import engine
+from src.api.db import models
+
+# Auto-Initialize the SQLite Database on Startup
+# This creates the traffic_events.db file automatically when the server runs
+models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="Traffic Intelligence API",
@@ -39,3 +45,4 @@ async def model_out_of_bounds_handler(request: Request, exc: ModelOutOfBoundsExc
             "message": exc.message
         }
     )
+
