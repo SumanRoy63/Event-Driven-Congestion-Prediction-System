@@ -10,7 +10,8 @@ from typing import Dict, Any
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-MODELS_DIR = "models"
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+MODELS_DIR = os.path.join(BASE_DIR, "models")
 REGISTRY_PATH = os.path.join(MODELS_DIR, "model_registry.json")
 
 # In-memory Thread-Safe LRU Cache

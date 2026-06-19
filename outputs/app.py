@@ -1,421 +1,106 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
-import joblib
-
-import plotly.express as px
-import plotly.graph_objects as go
+import requests
+from datetime import datetime
 
 # =====================================
 # PAGE CONFIG
 # =====================================
-
 st.set_page_config(
     page_title="Smart Traffic AI System",
     layout="wide"
 )
 
-# =====================================
-# LOAD DATA
-# =====================================
-
-@st.cache_data
-def load_data():
-
-    return pd.read_csv(
-        "data/processed/processed_events.csv"
-    )
-
-df = load_data()
+st.title("🚦 Smart Traffic Event Management System")
+st.write("Dynamic API Dashboard (Priority 4 Implementation)")
 
 # =====================================
-# LOAD MODELS
+# API SETTINGS
 # =====================================
-
-@st.cache_resource
-def load_models():
-
-    road_model = joblib.load(
-        "models/road_closure_xgb.pkl"
-    )
-
-    severity_model = joblib.load(
-        "models/severity_xgb.pkl"
-    )
-
-    priority_encoder = joblib.load(
-        "models/priority_encoder.pkl"
-    )
-
-    return (
-        road_model,
-        severity_model,
-        priority_encoder
-    )
-
-road_model, severity_model, priority_encoder = (
-    load_models()
-)
+BASE_URL = "http://127.0.0.1:8000/api/v1"
 
 # =====================================
-# SIDEBAR
+# FETCH EVENT HISTORY
 # =====================================
-
-st.sidebar.title(
-    "Traffic AI Dashboard"
-)
-
-page = st.sidebar.radio(
-
-    "Select Module",
-
-    [
-        "Overview",
-        "Analytics",
-        "Prediction",
-        "Hotspots",
-        "Recommendations"
-    ]
-)
-
-# =====================================
-# OVERVIEW
-# =====================================
-
-if page == "Overview":
-
-    st.title(
-        "🚦 Smart Traffic Event Management System"
-    )
-
-    c1,c2,c3,c4 = st.columns(4)
-
-    c1.metric(
-        "Total Events",
-        len(df)
-    )
-
-    c2.metric(
-        "Columns",
-        df.shape[1]
-    )
-
-    c3.metric(
-        "Unique Zones",
-        df["zone"].nunique()
-        if "zone" in df.columns else "-"
-    )
-
-    c4.metric(
-        "Event Types",
-        df["event_type"].nunique()
-        if "event_type" in df.columns else "-"
-    )
-
-    st.dataframe(
-        df.head()
-    )
-
-# =====================================
-# ANALYTICS
-# =====================================
-
-elif page == "Analytics":
-
-    st.title(
-        "📊 Event Analytics"
-    )
-
-    if "hour" in df.columns:
-
-        fig = px.histogram(
-
-            df,
-
-            x="hour",
-
-            title="Events by Hour"
-        )
-
-        st.plotly_chart(
-            fig,
-            use_container_width=True
-        )
-
-    if "month" in df.columns:
-
-        fig = px.histogram(
-
-            df,
-
-            x="month",
-
-            title="Monthly Trend"
-        )
-
-        st.plotly_chart(
-            fig,
-            use_container_width=True
-        )
-
-# =====================================
-# PREDICTION
-# =====================================
-
-elif page == "Prediction":
-
-    st.title("🤖 AI Prediction")
-
-    st.info(
-        "Enter feature values and predict road closure + severity"
-    )
-
-    # =====================================
-    # LOAD FEATURE COLUMNS
-    # =====================================
-
+def fetch_event_history():
     try:
-        feature_columns = joblib.load(
-            "models/feature_columns.pkl"
-        )
-    except Exception:
-        st.error(
-            "feature_columns.pkl not found or invalid. "
-            "Save training columns first."
-        )
-        st.stop()
+        response = requests.get(f"{BASE_URL}/events/history", timeout=5)
+        response.raise_for_status()
+        return response.json()
+    except Exception as e:
+        st.error(f"Failed to connect to the backend server at {BASE_URL}. Ensure FastAPI is running! Error: {e}")
+        return []
 
-    if isinstance(feature_columns, dict):
-        road_features = feature_columns.get("road_closure", [])
-        severity_features = feature_columns.get("severity", [])
-    else:
-        road_features = list(feature_columns)
-        severity_features = list(feature_columns)
+# =====================================
+# SIDEBAR: EVENT SIMULATION FORM
+# =====================================
+st.sidebar.title("🚨 Event Simulation Form")
+st.sidebar.write("Inject a new traffic event into the AI pipeline.")
 
-    if not road_features or not severity_features:
-        st.error(
-            "feature_columns.pkl does not contain valid column lists."
-        )
-        st.stop()
-
-    input_features = sorted(
-        set(road_features) | set(severity_features)
-    )
-
-    if "requires_road_closure" in input_features:
-        input_features.remove("requires_road_closure")
-
-    # =====================================
-    # CREATE INPUT FORM
-    # =====================================
-
-    input_data = {}
-
-    col1, col2 = st.columns(2)
-
-    for i, col in enumerate(input_features):
-
-        if col in df.columns:
+with st.sidebar.form("event_simulation_form"):
+    event_type = st.text_input("Event Type", value="Political Rally")
+    zone = st.text_input("Zone / Location", value="Downtown")
+    expected_attendance = st.number_input("Expected Attendance", min_value=0, value=5000)
+    latitude = st.number_input("Latitude", value=12.9716, format="%.4f")
+    longitude = st.number_input("Longitude", value=77.5946, format="%.4f")
+    start_datetime = st.text_input("Start Datetime (ISO format)", value=datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S"))
+    
+    submit_button = st.form_submit_button("Submit Event to AI Backend")
+    
+    if submit_button:
+        payload = {
+            "event_type": event_type,
+            "latitude": latitude,
+            "longitude": longitude,
+            "start_datetime": start_datetime,
+            "zone": zone,
+            "expected_attendance": expected_attendance
+        }
+        
+        with st.spinner("Processing event and running AI models..."):
             try:
-                default_value = float(df[col].median())
-            except Exception:
-                default_value = 0.0
-        else:
-            default_value = 0.0
-
-        target_col = col1 if i % 2 == 0 else col2
-        with target_col:
-            input_data[col] = st.number_input(
-                col,
-                value=default_value
-            )
-
-    # =====================================
-    # PREDICT
-    # =====================================
-
-    if st.button("Predict"):
-
-        try:
-            X = pd.DataFrame([input_data])
-
-            road_input = X[road_features]
-            road_prob = road_model.predict_proba(road_input)[0][1]
-            road_pred = int(road_model.predict(road_input)[0])
-
-            severity_input = X.copy()
-            severity_input["requires_road_closure"] = road_pred
-            severity_input = severity_input[severity_features]
-
-            severity_pred = int(
-                severity_model.predict(severity_input)[0]
-            )
-            severity = priority_encoder.inverse_transform(
-                [severity_pred]
-            )[0]
-
-            st.success(
-                f"Road Closure Probability: {road_prob:.2%}"
-            )
-
-            st.success(
-                f"Road Closure Required: {road_pred}"
-            )
-
-            st.success(
-                f"Predicted Severity: {severity}"
-            )
-
-        except Exception as e:
-            st.error(
-                f"Prediction Error: {e}"
-            )
-
+                post_response = requests.post(f"{BASE_URL}/events", json=payload, timeout=10)
+                post_response.raise_for_status()
+                result = post_response.json()
+                
+                prediction = result.get("prediction", {})
+                recommendation = result.get("recommendation", {})
+                
+                st.sidebar.success(f"**Predicted Severity:** {prediction.get('severity', 'Unknown')}")
+                st.sidebar.info(f"**Closure Probability:** {prediction.get('road_closure_probability', 0.0):.2%}")
+                st.sidebar.warning(f"**Officers Needed:** {recommendation.get('officers_needed', 'N/A')}")
+                
+                # Rerun to instantly refresh the history table on the right
+                st.rerun()
+                
+            except Exception as e:
+                st.sidebar.error(f"Failed to submit event: {e}")
 
 # =====================================
-# HOTSPOTS
+# MAIN DASHBOARD: EVENT HISTORY
 # =====================================
+st.subheader("📋 Recent Event History (Live Database)")
 
-elif page == "Hotspots":
+history_data = fetch_event_history()
 
-    st.title(
-        "🔥 Traffic Hotspots"
-    )
-
-    if (
-        "latitude" in df.columns
-        and
-        "longitude" in df.columns
-    ):
-
-        fig = px.scatter_map(
-
-            df,
-
-            lat="latitude",
-
-            lon="longitude",
-
-            zoom=9,
-
-            height=600
-        )
-
-        st.plotly_chart(
-            fig,
-            use_container_width=True
-        )
-
-    try:
-
-        hotspot_df = pd.read_csv(
-            "outputs/hotspot_clusters.csv"
-        )
-
-        st.subheader(
-            "Hotspot Ranking"
-        )
-
-        st.dataframe(
-            hotspot_df.head(20)
-        )
-
-    except:
-
-        st.warning(
-            "Run hotspot_detection.py first"
-        )
-
-# =====================================
-# RECOMMENDATION ENGINE
-# =====================================
-
-elif page == "Recommendations":
-
-    st.title(
-        "🚨 Traffic Recommendations"
-    )
-
-    severity = st.selectbox(
-
-        "Severity",
-
-        ["Low","Medium","High"]
-    )
-
-    closure_prob = st.slider(
-
-        "Road Closure Probability",
-
-        0.0,
-        1.0,
-        0.75
-    )
-
-    hotspot_rank = st.slider(
-
-        "Hotspot Rank",
-
-        1,
-        10,
-        3
-    )
-
-    if st.button(
-        "Generate Recommendation"
-    ):
-
-        officers = 2
-
-        if severity == "Medium":
-            officers = 5
-
-        if severity == "High":
-            officers = 10
-
-        if hotspot_rank <= 3:
-            officers += 5
-
-        if closure_prob > 0.8:
-
-            barricade = "Required"
-
-        elif closure_prob > 0.5:
-
-            barricade = "Partial"
-
-        else:
-
-            barricade = "Not Required"
-
-        risk = (
-            hotspot_rank * 5
-            +
-            closure_prob * 50
-        )
-
-        st.metric(
-            "Risk Score",
-            round(risk,2)
-        )
-
-        st.write(
-            f"👮 Officers Required: {officers}"
-        )
-
-        st.write(
-            f"🚧 Barricades: {barricade}"
-        )
-
-        st.write(
-            f"📢 Alert Level: {severity}"
-        )
+if history_data:
+    df_history = pd.DataFrame(history_data)
+    
+    # Clean up column order for better presentation
+    cols = [
+        "id", "timestamp", "event_type", "location", "expected_attendance", 
+        "predicted_severity", "road_closure_probability", "alert_triggered"
+    ]
+    display_cols = [c for c in cols if c in df_history.columns] + [c for c in df_history.columns if c not in cols]
+    
+    df_history = df_history[display_cols]
+    
+    st.dataframe(df_history, use_container_width=True)
+else:
+    st.info("No events found in the database. Use the sidebar to simulate one!")
 
 # =====================================
 # FOOTER
 # =====================================
-
-st.sidebar.markdown("---")
-st.sidebar.write(
-    "Flipkart Grid 2.0 Hackathon"
-)
+st.markdown("---")
+st.write("Flipkart Grid 2.0 Hackathon - Fully integrated with SQLite + SQLAlchemy + FastAPI")

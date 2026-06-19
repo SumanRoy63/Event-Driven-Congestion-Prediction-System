@@ -1,12 +1,12 @@
 import threading
 from datetime import datetime, timedelta
-from fastapi import APIRouter, BackgroundTasks, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from src.api.schemas.event import EventRequest
 from src.api.schemas.response import EventResponse
 from src.api.services.prediction_service import preprocess_event, predict_event
-from src.api.services.model_manager import get_models_for_date
+from src.api.services.model_manager import get_models_for_date, ModelOutOfBoundsException
 from src.api.services.hotspot_service import determine_hotspot_rank
 from src.api.services.recommendation_service import generate_recommendation
 from src.data.alerts.email_alert import send_email_alert
@@ -25,24 +25,30 @@ COOLDOWN_MINUTES = 10
 
 @router.post("/events", response_model=EventResponse)
 def create_event(payload: EventRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
-    # 1. Fetch appropriate models based on event date
-    models = get_models_for_date(payload.start_datetime)
+    try:
+        # 1. Fetch appropriate models based on event date
+        models = get_models_for_date(payload.start_datetime)
 
-    # 2. Evaluate Hotspot Rank internally using the versioned CSV
-    hotspot_info = determine_hotspot_rank(payload.latitude, payload.longitude, models.get("hotspots_df"))
-    
-    # 3. Build Features
-    features_df = preprocess_event(payload.dict(), models["categorical_encoders"])
-    
-    # 4. Predict Severity and Road Closure Probability
-    prediction = predict_event(features_df, models)
-    
-    # 5. Generate Recommendation
-    recommendation = generate_recommendation(
-        severity=prediction["severity"],
-        closure_prob=prediction["road_closure_probability"],
-        hotspot_rank=hotspot_info["rank"]
-    )
+        # 2. Evaluate Hotspot Rank internally using the versioned CSV
+        hotspot_info = determine_hotspot_rank(payload.latitude, payload.longitude, models.get("hotspots_df"))
+        
+        # 3. Build Features
+        features_df = preprocess_event(payload.dict(), models["categorical_encoders"])
+        
+        # 4. Predict Severity and Road Closure Probability
+        prediction = predict_event(features_df, models)
+        
+        # 5. Generate Recommendation
+        recommendation = generate_recommendation(
+            severity=prediction["severity"],
+            closure_prob=prediction["road_closure_probability"],
+            hotspot_rank=hotspot_info["rank"]
+        )
+    except ModelOutOfBoundsException as mob:
+        # Re-raise so it hits our custom 404 handler in main.py
+        raise mob
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Prediction pipeline failure: {str(e)}")
     
     should_alert = False
     
