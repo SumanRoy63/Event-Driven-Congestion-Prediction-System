@@ -84,3 +84,5 @@ def feature_pipeline(df, datetime_column):
     df = encode_categories(df)
 
     return df
+
+    

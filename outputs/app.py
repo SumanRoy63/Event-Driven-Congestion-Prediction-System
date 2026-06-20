@@ -3,9 +3,10 @@ import pandas as pd
 import requests
 import json
 import os
+import numpy as np
 
 import plotly.express as px
-
+import plotly.graph_objects as go
 # =====================================
 # CONSTANTS
 # =====================================
@@ -295,8 +296,8 @@ elif page == "Hotspots":
         "latitude" in df.columns
         and
         "longitude" in df.columns
-        and
-        len(df) > 0
+        
+        
     ):
 
         fig = px.scatter_map(
