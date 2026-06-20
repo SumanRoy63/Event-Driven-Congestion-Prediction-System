@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-from src.api.routers import events, predictions, hotspots, recommendations, ingest
+from src.api.routers import events, predictions, hotspots, recommendations, ingest, admin
 from src.api.services.model_manager import ModelOutOfBoundsException
 from fastapi.middleware.cors import CORSMiddleware
 from src.api.db.database import engine
@@ -30,6 +30,7 @@ app.include_router(predictions.router, prefix="/api/v1", tags=["Predictions"])
 app.include_router(hotspots.router, prefix="/api/v1", tags=["Hotspots"])
 app.include_router(recommendations.router, prefix="/api/v1", tags=["Recommendations"])
 app.include_router(ingest.router, prefix="/api/v1", tags=["Data Ingestion & Training"])
+app.include_router(admin.router, prefix="/api/v1", tags=["Admin & System Management"])
 
 @app.get("/health")
 def health_check():

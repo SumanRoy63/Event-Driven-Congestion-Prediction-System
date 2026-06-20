@@ -107,3 +107,22 @@ def get_models_for_date(target_datetime: datetime) -> Dict[str, Any]:
         return models
     except Exception as e:
         raise ModelOutOfBoundsException(f"Found version '{selected_version}' in registry, but failed to load .pkl files. Error: {e}")
+
+
+def evict_from_cache(version_name: str) -> bool:
+    """Remove a specific model version from the in-memory LRU cache."""
+    with _cache_lock:
+        if version_name in _model_cache:
+            del _model_cache[version_name]
+            logger.info(f"[CACHE EVICT] Manually evicted version '{version_name}'.")
+            return True
+    return False
+
+
+def clear_cache() -> int:
+    """Purge all entries from the in-memory LRU cache. Returns count evicted."""
+    with _cache_lock:
+        count = len(_model_cache)
+        _model_cache.clear()
+        logger.info(f"[CACHE CLEAR] Purged all {count} cached model(s).")
+    return count
