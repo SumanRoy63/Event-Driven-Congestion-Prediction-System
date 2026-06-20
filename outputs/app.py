@@ -17,10 +17,17 @@ REGISTRY_PATH = os.path.join(
     "models",
     "model_registry.json",
 )
+RAW_EVENTS_CSV_PATH = os.path.abspath(
+    os.path.join(
+        os.path.dirname(__file__),
+        "..",
+        "Astram event data_anonymized - Astram event data_anonymizedb40ac87.csv",
+    )
+)
 
 REQUIRED_COLUMNS = [
     "hour", "month", "latitude", "longitude",
-    "zone", "event_type",
+    "zone", "event_type", "address",
 ]
 
 # =====================================
@@ -48,11 +55,57 @@ def fetch_event_history():
         resp.raise_for_status()
         data = resp.json()
         if data:
-            return pd.DataFrame(data)
+            df = pd.DataFrame(data)
+
+            # Normalize timestamp and derive hour/month when missing
+            if "timestamp" in df.columns:
+                df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce")
+            if "hour" not in df.columns or df["hour"].isna().all():
+                if "timestamp" in df.columns:
+                    df["hour"] = df["timestamp"].dt.hour
+                else:
+                    df["hour"] = pd.NA
+            if "month" not in df.columns or df["month"].isna().all():
+                if "timestamp" in df.columns:
+                    df["month"] = df["timestamp"].dt.month
+                else:
+                    df["month"] = pd.NA
+
+            # Ensure latitude/longitude are numeric
+            if "latitude" in df.columns:
+                df["latitude"] = pd.to_numeric(df["latitude"], errors="coerce")
+            else:
+                df["latitude"] = pd.NA
+
+            if "longitude" in df.columns:
+                df["longitude"] = pd.to_numeric(df["longitude"], errors="coerce")
+            else:
+                df["longitude"] = pd.NA
+
+            # Clean up common missing columns
+            for c in REQUIRED_COLUMNS:
+                if c not in df.columns:
+                    df[c] = pd.NA
+
+            return df
     except Exception:
         pass
 
     return pd.DataFrame(columns=REQUIRED_COLUMNS)
+
+
+@st.cache_data(ttl=30)
+def load_raw_event_addresses():
+    """Load raw CSV event addresses for the Hotspots page."""
+    try:
+        raw_df = pd.read_csv(RAW_EVENTS_CSV_PATH)
+        if "latitude" in raw_df.columns:
+            raw_df["latitude"] = pd.to_numeric(raw_df["latitude"], errors="coerce")
+        if "longitude" in raw_df.columns:
+            raw_df["longitude"] = pd.to_numeric(raw_df["longitude"], errors="coerce")
+        return raw_df
+    except Exception:
+        return pd.DataFrame(columns=["latitude", "longitude", "address"])
 
 
 df = fetch_event_history()
@@ -155,6 +208,9 @@ elif page == "Analytics":
             fig,
             use_container_width=True
         )
+        # Show underlying data used for this chart
+        st.subheader("Data — Events by Hour")
+        st.dataframe(df[["hour", "event_type"]].dropna().head(50))
 
     if "month" in df.columns:
 
@@ -171,6 +227,8 @@ elif page == "Analytics":
             fig,
             use_container_width=True
         )
+        st.subheader("Data — Monthly Trend")
+        st.dataframe(df[["month", "event_type"]].dropna().head(50))
 
 # =====================================
 # PREDICTION (API-driven)
@@ -292,31 +350,84 @@ elif page == "Hotspots":
         "🔥 Traffic Hotspots"
     )
 
-    if (
-        "latitude" in df.columns
-        and
-        "longitude" in df.columns
-        
-        
-    ):
+    # Load raw event addresses from the source CSV if available
+    raw_events_df = load_raw_event_addresses()
+    has_raw_addresses = (
+        not raw_events_df.empty
+        and "latitude" in raw_events_df.columns
+        and "longitude" in raw_events_df.columns
+        and raw_events_df["latitude"].notna().any()
+        and raw_events_df["longitude"].notna().any()
+        and "address" in raw_events_df.columns
+    )
+
+    if has_raw_addresses:
+        coords = raw_events_df.dropna(subset=["latitude", "longitude"]).copy()
+        coords["address"] = coords["address"].fillna("Unknown")
+        fig_kwargs = {
+            "lat": "latitude",
+            "lon": "longitude",
+            "zoom": 9,
+            "height": 600,
+            "text": "address",
+            "hover_name": "address",
+        }
+        if "event_type" in coords.columns:
+            fig_kwargs["hover_data"] = ["event_type", "start_datetime"] if "start_datetime" in coords.columns else ["event_type"]
 
         fig = px.scatter_map(
-
-            df,
-
-            lat="latitude",
-
-            lon="longitude",
-
-            zoom=9,
-
-            height=600
+            coords,
+            **fig_kwargs
         )
 
         st.plotly_chart(
             fig,
             use_container_width=True
         )
+
+        display_cols = [
+            c for c in ["start_datetime", "address", "event_type", "latitude", "longitude"]
+            if c in coords.columns
+        ]
+        st.subheader("Data — Hotspot Addresses from CSV")
+        st.dataframe(coords[display_cols].head(100))
+
+    elif (
+        "latitude" in df.columns
+        and "longitude" in df.columns
+        and df["latitude"].notna().any()
+        and df["longitude"].notna().any()
+    ):
+        coords = df.dropna(subset=["latitude", "longitude"]).copy()
+
+        fig_kwargs = {
+            "lat": "latitude",
+            "lon": "longitude",
+            "zoom": 9,
+            "height": 600,
+        }
+        if "address" in coords.columns:
+            coords["address"] = coords["address"].fillna("Unknown")
+            fig_kwargs.update({"text": "address", "hover_name": "address"})
+        if "event_type" in coords.columns:
+            fig_kwargs["hover_data"] = ["event_type", "timestamp", "zone"]
+
+        fig = px.scatter_map(
+            coords,
+            **fig_kwargs
+        )
+
+        st.plotly_chart(
+            fig,
+            use_container_width=True
+        )
+
+        display_cols = [
+            c for c in ["timestamp", "address", "zone", "event_type", "latitude", "longitude"]
+            if c in coords.columns
+        ]
+        st.subheader("Data — Hotspot Coordinates")
+        st.dataframe(coords[display_cols].head(100))
 
     else:
         st.warning(

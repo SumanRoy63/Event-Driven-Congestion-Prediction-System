@@ -124,7 +124,42 @@ def get_event_history(db: Session = Depends(get_db)):
     Retrieves the last 50 events from the SQLite database.
     """
     events = db.query(EventRecord).order_by(EventRecord.timestamp.desc()).limit(50).all()
-    return events
+
+    # Convert ORM objects to JSON-serializable dicts with geolocation
+    results = []
+    for e in events:
+        lat = None
+        lon = None
+        zone = None
+
+        # location may contain a zone name or "lat,lon"
+        if e.location:
+            if "," in str(e.location):
+                try:
+                    parts = str(e.location).split(",")
+                    lat = float(parts[0])
+                    lon = float(parts[1])
+                except Exception:
+                    lat = None
+                    lon = None
+            else:
+                zone = e.location
+
+        hour = e.timestamp.hour if getattr(e, "timestamp", None) else None
+        month = e.timestamp.month if getattr(e, "timestamp", None) else None
+
+        results.append({
+            "id": e.id,
+            "timestamp": e.timestamp.isoformat() if getattr(e, "timestamp", None) else None,
+            "hour": hour,
+            "month": month,
+            "latitude": lat,
+            "longitude": lon,
+            "zone": zone,
+            "event_type": e.event_type,
+        })
+
+    return results
 
 
 @router.get("/alerts/twilio/health")
