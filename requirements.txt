@@ -3,7 +3,7 @@ xgboost
 matplotlib
 seaborn
 streamlit
-fastapi
+
 python-multipart
 folium
 twilio
