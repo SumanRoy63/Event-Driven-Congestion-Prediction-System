@@ -69,10 +69,11 @@ const VEHICLE_TYPES = [
 ];
 
 interface Props {
-  onIncidentCountChange?: (count: number) => void;
+  sharedIncidents: any[];
+  setSharedIncidents: React.Dispatch<React.SetStateAction<any[]>>;
 }
 
-export function LiveOperationsTab({ onIncidentCountChange }: Props) {
+export function LiveOperationsTab({ sharedIncidents, setSharedIncidents }: Props) {
   // ── Map & Geo state ──
   const [latitude, setLatitude] = useState(12.9716);
   const [longitude, setLongitude] = useState(77.5946);
@@ -97,15 +98,7 @@ export function LiveOperationsTab({ onIncidentCountChange }: Props) {
   const [isLoadingPredict, setIsLoadingPredict] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  // ── Active incidents list (for MLOps tab cross-reference) ──
-  const [incidents, setIncidents] = useState<Array<{
-    id: string;
-    location: string;
-    severity: string;
-    cause: string;
-    timestamp: string;
-    manpower: number;
-  }>>([]);
+  // ── Active incidents list (shared from page.tsx) ──
 
   // ── Init ──
   useEffect(() => {
@@ -200,9 +193,8 @@ export function LiveOperationsTab({ onIncidentCountChange }: Props) {
           timestamp: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: false }),
           manpower: data.recommendations.manpower,
         };
-        setIncidents(prev => {
+        setSharedIncidents(prev => {
           const updated = [newIncident, ...prev];
-          onIncidentCountChange?.(updated.length);
           return updated;
         });
       } else {

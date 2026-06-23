@@ -49,9 +49,13 @@ interface IncidentLog {
   timestamp: string;
 }
 
-export function ModelLearningTab() {
+interface Props {
+  sharedIncidents: any[];
+  setSharedIncidents: React.Dispatch<React.SetStateAction<any[]>>;
+}
+
+export function ModelLearningTab({ sharedIncidents, setSharedIncidents }: Props) {
   // ── Feedback queue ──
-  const [logs, setLogs] = useState<IncidentLog[]>([]);
   const [logCount, setLogCount] = useState(0);
   const RETRAIN_THRESHOLD = 5;
 
@@ -145,7 +149,7 @@ export function ModelLearningTab() {
         setLogCount(newCount);
 
         // Remove from active list
-        setLogs(prev => prev.filter(l => l.id !== debriefTarget.id));
+        setSharedIncidents(prev => prev.filter(l => l.id !== debriefTarget.id));
 
         // Terminal output
         addTerminalLine(`> [${debriefTarget.id}] Feedback received: actual_impact=${actualImpact}, barricades_used=${actualBarricades}`);
@@ -226,7 +230,7 @@ export function ModelLearningTab() {
             </h2>
           </div>
           <Badge variant="outline" className="text-[10px] font-mono">
-            {logs.length} active
+            {sharedIncidents.length} active
           </Badge>
         </div>
 
@@ -235,7 +239,7 @@ export function ModelLearningTab() {
         </p>
 
         {/* Incident List */}
-        {logs.length === 0 ? (
+        {sharedIncidents.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <div className="w-16 h-16 rounded-full bg-accent/20 border border-border/30 flex items-center justify-center mb-4">
               <Database className="w-8 h-8 text-muted-foreground/30" />
@@ -245,7 +249,7 @@ export function ModelLearningTab() {
           </div>
         ) : (
           <div className="space-y-2">
-            {logs.map((incident) => {
+            {sharedIncidents.map((incident) => {
               const sevColor = incident.severity === "HIGH" ? "text-severity-high" : incident.severity === "MEDIUM" ? "text-severity-medium" : "text-severity-low";
               const sevBg = incident.severity === "HIGH" ? "bg-severity-high/15 border-severity-high/30" : incident.severity === "MEDIUM" ? "bg-severity-medium/15 border-severity-medium/30" : "bg-severity-low/15 border-severity-low/30";
 
@@ -294,7 +298,7 @@ export function ModelLearningTab() {
               cause: "accident",
               timestamp: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: false }),
             };
-            setLogs(prev => [demo, ...prev]);
+            setSharedIncidents(prev => [demo, ...prev]);
           }}
         >
           + Add Demo Incident (for Judges)

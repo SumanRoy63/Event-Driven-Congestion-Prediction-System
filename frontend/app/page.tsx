@@ -19,7 +19,7 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState("live-operations");
   const [currentTime, setCurrentTime] = useState("--:--:--");
   const [engineOnline, setEngineOnline] = useState(false);
-  const [incidentCount, setIncidentCount] = useState(0);
+  const [sharedIncidents, setSharedIncidents] = useState<any[]>([]);
 
   useEffect(() => {
     // Live clock with seconds
@@ -106,9 +106,9 @@ export default function DashboardPage() {
             >
               <Crosshair className="w-4 h-4 mr-2" />
               Tactical Dispatch
-              {incidentCount > 0 && (
+              {sharedIncidents.length > 0 && (
                 <span className="ml-2 px-1.5 py-0.5 text-[10px] font-mono rounded-sm bg-severity-high/20 text-severity-high">
-                  {incidentCount}
+                  {sharedIncidents.length}
                 </span>
               )}
             </TabsTrigger>
@@ -128,13 +128,13 @@ export default function DashboardPage() {
             value="live-operations"
             className="mt-0 h-full"
           >
-            <LiveOperationsTab onIncidentCountChange={setIncidentCount} />
+            <LiveOperationsTab sharedIncidents={sharedIncidents} setSharedIncidents={setSharedIncidents} />
           </TabsContent>
           <TabsContent
             value="model-learning"
             className="mt-0 h-full"
           >
-            <ModelLearningTab />
+            <ModelLearningTab sharedIncidents={sharedIncidents} setSharedIncidents={setSharedIncidents} />
           </TabsContent>
         </div>
       </Tabs>
