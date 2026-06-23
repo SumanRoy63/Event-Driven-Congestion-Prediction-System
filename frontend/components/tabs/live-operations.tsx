@@ -113,7 +113,8 @@ export function LiveOperationsTab({ onIncidentCountChange }: Props) {
     setEventTime(now.toISOString().slice(0, 16));
 
     // Load centroids from Supabase
-    fetch("http://127.0.0.1:8000/api/centroids")
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+    fetch(`${API_URL}/api/centroids`)
       .then((r) => r.json())
       .then((data) => {
         if (Array.isArray(data)) {
@@ -132,7 +133,8 @@ export function LiveOperationsTab({ onIncidentCountChange }: Props) {
     setIsResolvingGeo(true);
     setGeoError(false);
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/geo-context?lat=${lat}&lng=${lng}`);
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+      const res = await fetch(`${API_URL}/api/geo-context?lat=${lat}&lng=${lng}`);
       if (res.ok) {
         const data = await res.json();
         setCorridor(data.corridor || "Non-corridor");
@@ -179,7 +181,8 @@ export function LiveOperationsTab({ onIncidentCountChange }: Props) {
         event_type: eventType,
       };
 
-      const res = await fetch("http://127.0.0.1:8000/predict", {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+      const res = await fetch(`${API_URL}/predict`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

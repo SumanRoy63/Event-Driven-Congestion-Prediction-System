@@ -74,7 +74,8 @@ export function ModelLearningTab() {
 
   // ── Init: fetch real model stats ──
   useEffect(() => {
-    fetch("http://127.0.0.1:8000/api/model-stats")
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+    fetch(`${API_URL}/api/model-stats`)
       .then((r) => r.json())
       .then((data) => {
         setModelVersion(data.model_version || "—");
@@ -84,7 +85,8 @@ export function ModelLearningTab() {
       .catch(() => {});
 
     // Also check existing log count
-    fetch("http://127.0.0.1:8000/retrain", { method: "POST" })
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+    fetch(`${API_URL}/retrain`, { method: "POST" })
       .then((r) => r.json())
       .then((data) => {
         // Parse "Currently have X" from waiting message
@@ -131,7 +133,8 @@ export function ModelLearningTab() {
         actual_barricades_used: actualBarricades,
       };
 
-      const res = await fetch("http://127.0.0.1:8000/feedback", {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+      const res = await fetch(`${API_URL}/feedback`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -186,7 +189,8 @@ export function ModelLearningTab() {
     }
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/retrain", { method: "POST" });
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+      const res = await fetch(`${API_URL}/retrain`, { method: "POST" });
       const data = await res.json();
 
       if (data.status === "success") {

@@ -36,7 +36,8 @@ export default function DashboardPage() {
     const interval = setInterval(updateTime, 1000);
 
     // Check backend health
-    fetch("http://127.0.0.1:8000/api/model-stats")
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+    fetch(`${API_URL}/api/model-stats`)
       .then((r) => { if (r.ok) setEngineOnline(true); })
       .catch(() => setEngineOnline(false));
 
