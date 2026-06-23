@@ -5,5 +5,5 @@ venv/
 
 .ipynb_checkpoints/
 
-
+.conda/
 .env
