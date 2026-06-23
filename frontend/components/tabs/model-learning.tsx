@@ -38,6 +38,8 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL as string;
+
 // ── Types ──
 interface IncidentLog {
   id: string;
@@ -74,7 +76,6 @@ export function ModelLearningTab() {
 
   // ── Init: fetch real model stats ──
   useEffect(() => {
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
     fetch(`${API_URL}/api/model-stats`)
       .then((r) => r.json())
       .then((data) => {
@@ -85,7 +86,6 @@ export function ModelLearningTab() {
       .catch(() => {});
 
     // Also check existing log count
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
     fetch(`${API_URL}/retrain`, { method: "POST" })
       .then((r) => r.json())
       .then((data) => {
@@ -133,7 +133,6 @@ export function ModelLearningTab() {
         actual_barricades_used: actualBarricades,
       };
 
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
       const res = await fetch(`${API_URL}/feedback`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -189,7 +188,6 @@ export function ModelLearningTab() {
     }
 
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
       const res = await fetch(`${API_URL}/retrain`, { method: "POST" });
       const data = await res.json();
 

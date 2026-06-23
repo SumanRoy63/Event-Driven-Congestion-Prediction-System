@@ -49,6 +49,8 @@ const LeafletMap = dynamic(
   }
 );
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL as string;
+
 // ── Constants ──
 const EVENT_CAUSES = [
   { value: "accident", label: "Accident" },
@@ -113,7 +115,6 @@ export function LiveOperationsTab({ onIncidentCountChange }: Props) {
     setEventTime(now.toISOString().slice(0, 16));
 
     // Load centroids from Supabase
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
     fetch(`${API_URL}/api/centroids`)
       .then((r) => r.json())
       .then((data) => {
@@ -133,7 +134,6 @@ export function LiveOperationsTab({ onIncidentCountChange }: Props) {
     setIsResolvingGeo(true);
     setGeoError(false);
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
       const res = await fetch(`${API_URL}/api/geo-context?lat=${lat}&lng=${lng}`);
       if (res.ok) {
         const data = await res.json();
@@ -181,7 +181,6 @@ export function LiveOperationsTab({ onIncidentCountChange }: Props) {
         event_type: eventType,
       };
 
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
       const res = await fetch(`${API_URL}/predict`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
