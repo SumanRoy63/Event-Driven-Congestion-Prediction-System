@@ -7,6 +7,8 @@ import {
   Cpu,
   Radio,
   Signal,
+  Crosshair,
+  BarChart3,
 } from "lucide-react";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -15,19 +17,29 @@ import { ModelLearningTab } from "@/components/tabs/model-learning";
 
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState("live-operations");
-  const [currentTime, setCurrentTime] = useState("--:--");
+  const [currentTime, setCurrentTime] = useState("--:--:--");
+  const [engineOnline, setEngineOnline] = useState(false);
+  const [incidentCount, setIncidentCount] = useState(0);
 
   useEffect(() => {
+    // Live clock with seconds
     const updateTime = () =>
       setCurrentTime(
         new Date().toLocaleTimeString("en-IN", {
           hour: "2-digit",
           minute: "2-digit",
+          second: "2-digit",
           hour12: false,
         })
       );
     updateTime();
     const interval = setInterval(updateTime, 1000);
+
+    // Check backend health
+    fetch("http://127.0.0.1:8000/api/model-stats")
+      .then((r) => { if (r.ok) setEngineOnline(true); })
+      .catch(() => setEngineOnline(false));
+
     return () => clearInterval(interval);
   }, []);
 
@@ -42,7 +54,7 @@ export default function DashboardPage() {
               <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-accent-blue to-accent-violet flex items-center justify-center">
                 <Cpu className="w-5 h-5 text-white" />
               </div>
-              <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-severity-low border-2 border-background animate-pulse-glow" />
+              <div className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-background ${engineOnline ? "bg-severity-low animate-pulse-glow" : "bg-severity-high"}`} />
             </div>
             <div>
               <h1 className="text-base font-semibold tracking-tight">
@@ -50,7 +62,7 @@ export default function DashboardPage() {
                 <span className="text-foreground/80">Traffic Command Center</span>
               </h1>
               <p className="text-[11px] text-muted-foreground font-mono tracking-wide">
-                HYDERABAD METRO · REAL-TIME OPS
+                BENGALURU METRO · REAL-TIME OPS
               </p>
             </div>
           </div>
@@ -58,12 +70,17 @@ export default function DashboardPage() {
           {/* System Status Indicators */}
           <div className="flex items-center gap-5">
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Signal className="w-3.5 h-3.5 text-severity-low" />
-              <span className="font-mono">SYSTEM ONLINE</span>
+              <div className={`w-2 h-2 rounded-full ${engineOnline ? "bg-severity-low" : "bg-severity-high animate-pulse"}`} />
+              <span className="font-mono">LightGBM: {engineOnline ? "Online" : "Offline"}</span>
             </div>
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <div className={`w-2 h-2 rounded-full ${engineOnline ? "bg-severity-low" : "bg-severity-high"}`} />
+              <span className="font-mono">LLM: {engineOnline ? "Connected" : "—"}</span>
+            </div>
+            <div className="h-4 w-px bg-border/50" />
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Clock className="w-3.5 h-3.5" />
-              <span className="font-mono">{currentTime}</span>
+              <span className="font-mono tabular-nums">{currentTime}</span>
             </div>
             <div className="flex items-center gap-1.5">
               <div className="w-2 h-2 rounded-full bg-severity-low animate-pulse-glow" />
@@ -86,18 +103,20 @@ export default function DashboardPage() {
               value="live-operations"
               className="relative rounded-none border-b-2 border-transparent data-[state=active]:border-accent-blue data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none text-muted-foreground bg-transparent px-4 py-2.5 text-sm font-medium transition-all duration-200 hover:text-foreground/80 cursor-pointer"
             >
-              <Radio className="w-4 h-4 mr-2" />
-              Live Operations
-              <span className="ml-2 px-1.5 py-0.5 text-[10px] font-mono rounded-sm bg-severity-high/20 text-severity-high">
-                8
-              </span>
+              <Crosshair className="w-4 h-4 mr-2" />
+              Tactical Dispatch
+              {incidentCount > 0 && (
+                <span className="ml-2 px-1.5 py-0.5 text-[10px] font-mono rounded-sm bg-severity-high/20 text-severity-high">
+                  {incidentCount}
+                </span>
+              )}
             </TabsTrigger>
             <TabsTrigger
               value="model-learning"
               className="relative rounded-none border-b-2 border-transparent data-[state=active]:border-accent-violet data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none text-muted-foreground bg-transparent px-4 py-2.5 text-sm font-medium transition-all duration-200 hover:text-foreground/80 cursor-pointer"
             >
               <Brain className="w-4 h-4 mr-2" />
-              Model Learning & Analytics
+              MLOps & Retraining Hub
             </TabsTrigger>
           </TabsList>
         </div>
@@ -108,7 +127,7 @@ export default function DashboardPage() {
             value="live-operations"
             className="mt-0 h-full"
           >
-            <LiveOperationsTab />
+            <LiveOperationsTab onIncidentCountChange={setIncidentCount} />
           </TabsContent>
           <TabsContent
             value="model-learning"

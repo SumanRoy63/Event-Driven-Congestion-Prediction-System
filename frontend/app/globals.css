@@ -152,6 +152,63 @@
   background-size: 40px 40px;
 }
 
+/* Pulsing severity neon glow */
+@keyframes severity-pulse-high {
+  0%, 100% { text-shadow: 0 0 8px oklch(0.637 0.237 15.34 / 0.8), 0 0 25px oklch(0.637 0.237 15.34 / 0.4); }
+  50% { text-shadow: 0 0 16px oklch(0.637 0.237 15.34 / 1), 0 0 40px oklch(0.637 0.237 15.34 / 0.6); }
+}
+@keyframes severity-pulse-medium {
+  0%, 100% { text-shadow: 0 0 8px oklch(0.769 0.188 70.08 / 0.6); }
+  50% { text-shadow: 0 0 16px oklch(0.769 0.188 70.08 / 1); }
+}
+.severity-glow-high { animation: severity-pulse-high 2s ease-in-out infinite; }
+.severity-glow-medium { animation: severity-pulse-medium 2.5s ease-in-out infinite; }
+
+/* Terminal window styling */
+.terminal-window {
+  background: oklch(0.06 0.003 260);
+  border: 1px solid oklch(0.723 0.219 149.58 / 0.3);
+  border-radius: 6px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12px;
+  color: oklch(0.723 0.219 149.58);
+  padding: 12px 16px;
+  overflow-y: auto;
+  line-height: 1.8;
+}
+.terminal-window .cursor-blink {
+  animation: blink 1s step-end infinite;
+}
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* Radio transcript panel */
+.radio-transcript {
+  background: oklch(0.12 0.006 260);
+  border-left: 3px solid oklch(0.623 0.214 259.13);
+  border-radius: 4px;
+  padding: 16px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 13px;
+  line-height: 1.75;
+  color: oklch(0.85 0.01 260);
+}
+
+/* Progress bar glow */
+@keyframes progress-glow {
+  0%, 100% { box-shadow: 0 0 8px oklch(0.623 0.214 259.13 / 0.4); }
+  50% { box-shadow: 0 0 20px oklch(0.623 0.214 259.13 / 0.8); }
+}
+.progress-bar-glow {
+  animation: progress-glow 2s ease-in-out infinite;
+}
+
+/* Intelligence zone dim overlay */
+.zone-dimmed { opacity: 0.25; filter: grayscale(0.5); transition: all 0.5s ease; pointer-events: none; }
+.zone-active { opacity: 1; filter: none; transition: all 0.5s ease; pointer-events: auto; }
+
 /* Custom scrollbar for the command center feel */
 ::-webkit-scrollbar {
   width: 6px;

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Query
 from typing import Dict, Any, Optional
 from datetime import datetime
 from src.api.services.hotspot_service import determine_hotspot_rank
-from src.api.services.model_manager import get_models_for_date
+from src.api.services.model_manager import get_latest_model
 
 router = APIRouter()
 
@@ -25,6 +25,6 @@ def get_hotspot_rank(
             target_datetime = datetime.utcnow()
             
     # Fetch appropriate models (and hotspots CSV) based on date
-    models = get_models_for_date(target_datetime)
+    models = get_latest_model()
     
     return determine_hotspot_rank(lat, lon, models.get("hotspots_df"))
